@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.merge import MergedCellRange
-from typing import List, Generator, Tuple, Union, Optional, Dict, Hashable
+from typing import List, Generator, Tuple, Union, Optional, Dict, Hashable, TypedDict
 from tsc_base import pair_to_dict, dict_to_pair
 from pprint import pprint
 
@@ -95,11 +95,11 @@ class XlsxReader:
         th_end: Union[int, str],
         side_th_end: Union[int, str] = 0,
         horizontal: bool = True,
-        start_col: Union[int, str] = 1,
-        start_row: int = 1,
+        start_col: Optional[Union[int, str]] = None,
+        start_row: Optional[int] = None,
         end_col: Optional[Union[int, str]] = None,
         end_row: Optional[int] = None,
-    ) -> Tuple[List[Union[dict, list]], NestedDict]:
+    ) -> dict:
         """从工作表中获取表格内容
 
         Args:
@@ -109,23 +109,26 @@ class XlsxReader:
             side_th_end (Union[int, str], optional): 侧边表头结束的位置，从1或A开始，horizontal为True时是字母列号，否则是数字行号
                 比 start_col(horizontal=False) 或 start_row(horizontal=True) 小表示没有侧边表头
             horizontal (bool, optional): 表头是否是从上到下的，否则是从左到右的
-            start_col (Union[int, str], optional): 表格开始的列位置，从A开始，1也行
-            start_row (int, optional): 表格开始的行位置，从1开始 
+            start_col (Optional[Union[int, str]], optional): 表格开始的列位置，从A开始，1也行，为None表示自动计算
+            start_row (Optional[int], optional): 表格开始的行位置，从1开始，为None表示自动计算
             end_col (Optional[Union[int, str]], optional): 表格结束的列位置，从A开始，1也行，为None表示自动计算
             end_row (Optional[int], optional): 表格结束的行位置，从1开始，为None表示自动计算
 
         Returns:
-            Tuple[List[Union[dict, list]], NestedDict]: 返回表格内容和侧边表头，表格内容是一个列表，每个元素是一条数据，侧边表头是一个嵌套字典
-                只有不存在表头的时候，doc_L 是列表嵌套列表
+            dict: 返回包括表格内容和侧边表头，表格内容是一个列表，每个元素是一条数据，侧边表头是一个嵌套字典
         """
+        start_col = start_col or sheet.min_column
+        start_row = start_row or sheet.min_row
+        end_col = end_col or sheet.max_column
+        end_row = end_row or sheet.max_row
         if isinstance(start_col, str):
             start_col = column_index_from_string(start_col)
+        if isinstance(end_col, str):
+            end_col = column_index_from_string(end_col)
         if isinstance(th_end, str):
             th_end = column_index_from_string(th_end)
         if isinstance(side_th_end, str):
             side_th_end = column_index_from_string(side_th_end)
-        end_col = end_col or sheet.max_column
-        end_row = end_row or sheet.max_row
         # 明确end下限
         if horizontal:
             th_end = max(th_end or 0, start_row - 1)
@@ -147,7 +150,8 @@ class XlsxReader:
             th_len_D: NestedDict = pair_to_dict(th_keys_len_L)
             assert len(th_keys_len_L) == sum(1 for _ in dict_to_pair(th_len_D)), f"表头同一级可能存在同名现象: {th_len_D}"
         else:
-            th_keys_len_L = []
+            th_keys_len_L: List[Tuple[list, int]] = []
+            th_len_D = {}
         # 获取侧边表头
         if has_side_th:
             if horizontal:
@@ -173,18 +177,23 @@ class XlsxReader:
                 for r in range(side_th_end + 1, end_row + 1):
                     td_L.append(sheet.cell(row=r, column=c).value)
                 td_L_L.append(td_L)
-        if not has_th:
-            return td_L_L, side_th
         # 生成 doc_L
-        doc_L = []
-        for td_L in td_L_L:
-            assert len(td_L) == len(th_keys_len_L), f"表格内容与表头长度不一致: {td_L}, {th_keys_len_L}"
-            th_keys_v_L = []
-            for v, (keys, l) in zip(td_L, th_keys_len_L):
-                assert l == 1, f"主表头最后一行不应该有合并单元格: {keys}, {l}"
-                th_keys_v_L.append((keys, v))
-            doc_L.append(pair_to_dict(th_keys_v_L))
-        return doc_L, side_th
+        doc_L: List[dict] = []
+        if has_th:
+            for td_L in td_L_L:
+                assert len(td_L) == len(th_keys_len_L), f"表格内容与表头长度不一致: {td_L}, {th_keys_len_L}"
+                th_keys_v_L = []
+                for v, (keys, l) in zip(td_L, th_keys_len_L):
+                    assert l == 1, f"主表头最后一行不应该有合并单元格: {keys}, {l}"
+                    th_keys_v_L.append((keys, v))
+                doc_L.append(pair_to_dict(th_keys_v_L))
+        return {
+            'docs': doc_L,
+            'side_th': side_th,
+            'td_list': td_L_L,
+            'th': th_len_D,
+            'th_pairs': th_keys_len_L,
+        }
 
 
 if __name__ == "__main__":
@@ -197,7 +206,6 @@ if __name__ == "__main__":
     ]:
         print('=' * 5, name, th_end, side_th_end, horizontal)
         sheet = wb[name]
-        doc_L, side_th = XlsxReader.get_docs_from_sheet(sheet, th_end, side_th_end, horizontal=horizontal)
-        pprint(doc_L)
-        pprint(side_th)
+        ret = XlsxReader.get_docs_from_sheet(sheet, th_end, side_th_end, horizontal=horizontal)
+        pprint(ret)
         print()
