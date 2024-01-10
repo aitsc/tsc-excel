@@ -1,0 +1,7 @@
+test/
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.xlsx
+*.xls
