@@ -9,7 +9,7 @@ else:
 
 setup(
     name='tsc-excel',
-    version='0.3',
+    version='0.4',
     description="excel 文件读写，以json形式",
     long_description=long_description,
     long_description_content_type="text/markdown",

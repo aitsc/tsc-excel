@@ -293,11 +293,11 @@ class Excel:
             th_D, th_L, td_L = cls.get_excel_table(doc_L, **kwargs)
             side_th_D, side_th_L, side_td_L = {}, [], []
         return {
-            'th_D': th_D,
-            'th_L': th_L,
-            'td_L': td_L,
-            'side_th_D': side_th_D,
-            'side_th_L': side_th_L,
+            'th_D': th_D,  # NestedDict
+            'th_L': th_L,  # [[((开始行,结束行,开始列,结束列),单元格值),..],..]
+            'td_L': td_L,  # [[((开始行,结束行,开始列,结束列),单元格值),..],..]
+            'side_th_D': side_th_D,  # NestedDict
+            'side_th_L': side_th_L,  # [[((开始行,结束行,开始列,结束列),单元格值),..],..]
         }
 
 

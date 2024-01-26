@@ -163,6 +163,7 @@ class XlsxReader:
             assert len(side_th_keys_len_L) == sum(1 for _ in dict_to_pair(side_th)), f"侧边表头同一级可能存在同名现象: {side_th}"
         else:
             side_th = {}
+            side_th_keys_len_L = []
         # 获取表格内容
         td_L_L: List[list] = []  # 与 horizontal 无关的结果，1个list是一条数据
         if horizontal:
@@ -188,11 +189,12 @@ class XlsxReader:
                     th_keys_v_L.append((keys, v))
                 doc_L.append(pair_to_dict(th_keys_v_L))
         return {
-            'docs': doc_L,
-            'side_th': side_th,
-            'td_list': td_L_L,
-            'th': th_len_D,
-            'th_pairs': th_keys_len_L,
+            'docs': doc_L,  # list[dict]
+            'side_th': side_th,  # NestedDict, 叶子是 int
+            'side_th_pairs': side_th_keys_len_L,  # list[tuple[list, int]]
+            'td_list': td_L_L,  # list[list]
+            'th': th_len_D,  # NestedDict, 叶子是 int
+            'th_pairs': th_keys_len_L,  # list[tuple[list, int]]
         }
 
 
