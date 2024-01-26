@@ -183,7 +183,11 @@ class Excel:
                     cell = worksheet.cell(coor[0]+1, coor[2]+1)  # openpyxl 从1开始
                     cell.value = Excel.ILLEGAL_CHARACTERS_RE.sub('', v) if type(v) == str else v
                     cell.alignment = package.styles.Alignment(horizontal='center', vertical='center')
-            save_path = save_path + '.xlsx' if save_path else None
+            if save_path:
+                if not save_path.endswith('.xlsx'):
+                    save_path = save_path + '.xlsx'
+            else:
+                save_path = None
             if auto_adjust_width:
                 column_widths = {}
                 for row in worksheet.iter_rows():  # 遍历所有行
@@ -218,7 +222,11 @@ class Excel:
             style.font = font
             for coor, v in th_L:
                 worksheet.write_merge(*coor, v, style)
-            save_path = save_path + '.xls' if save_path else None
+            if save_path:
+                if not save_path.endswith('.xls'):
+                    save_path = save_path + '.xls'
+            else:
+                save_path = None
         if save_path:
             if os.path.dirname(save_path) and not os.path.exists(os.path.dirname(save_path)):
                 os.makedirs(os.path.dirname(save_path))
